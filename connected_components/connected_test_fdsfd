@@ -1,0 +1,59 @@
+import jax
+import jax.numpy as jnp
+
+def initialize_labels(shape):
+    """Initialize labels with unique identifiers."""
+    M, N = shape
+    return jnp.arange(M * N).reshape(shape)
+
+def find_root(labels, idx):
+    """Find operation with path compression (iterative version for demonstration)."""
+    root = idx
+    while root != labels[root]:
+        root = labels[root]
+    return root
+
+@jax.jit
+def update_labels(labels):
+    """Perform one iteration of label updating with simplified union logic."""
+    M, N = labels.shape
+    new_labels = labels.ravel()
+
+    # Create a flat index array
+    indices = jnp.arange(M * N)
+
+    # Neighbors: Right, Down (can be extended to all 4 directions)
+    neighbors = jnp.array([1, N])  # Assuming row-major ordering
+
+    # Iterate over each neighbor direction
+    for neighbor in neighbors:
+        # Compute neighbor indices with boundary conditions
+        neighbor_indices = jnp.where((indices % N) + neighbor % N < N, indices + neighbor, indices)
+        neighbor_indices = jnp.where(neighbor_indices < M * N, neighbor_indices, indices)
+
+        # Union operation: Connect to the smallest label of itself and its neighbor
+        union_labels = jnp.minimum(new_labels, new_labels[neighbor_indices])
+        # new_labels = jax.lax.index_update(new_labels, indices, union_labels)
+        new_labels = new_labels.at[indices].set(union_labels)
+
+    return new_labels.reshape(M, N)
+
+def connected_components(image, num_iterations=10):
+    """Compute connected components labels for the given image."""
+    M, N = image.shape
+    labels = initialize_labels((M, N))
+
+    # Iteratively update labels
+    for _ in range(num_iterations):
+        labels = update_labels(labels)
+
+    return labels
+
+# Example usage
+# Example usage
+image = jnp.array([[1, 0, 0, 1],
+                   [1, 1, 0, 0],
+                   [0, 0, 1, 1],
+                   [0, 0, 1, 1]])
+labels = connected_components(image)
+print(labels)
