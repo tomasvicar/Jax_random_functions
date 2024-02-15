@@ -37,79 +37,91 @@ plt.imshow(img, cmap='gray')
 plt.show()
 
 
-@jit
-def shift_left(image, border_value=0):
-    shifted = jnp.roll(image, shift=-1, axis=1)  # Shift left
-    shifted = shifted.at[:, -1].set(border_value)  # Fill right border
-    return shifted
+# @jit
+# def shift_left(image, border_value=0):
+#     shifted = jnp.roll(image, shift=-1, axis=1)  # Shift left
+#     shifted = shifted.at[:, -1].set(border_value)  # Fill right border
+#     return shifted
 
-@jit
-def shift_up(image, border_value=0):
-    shifted = jnp.roll(image, shift=-1, axis=0)  # Shift up
-    shifted = shifted.at[-1, :].set(border_value)  # Fill bottom border
-    return shifted
+# @jit
+# def shift_up(image, border_value=0):
+#     shifted = jnp.roll(image, shift=-1, axis=0)  # Shift up
+#     shifted = shifted.at[-1, :].set(border_value)  # Fill bottom border
+#     return shifted
 
-@jit
-def shift_right(image, border_value=0):
-    shifted = jnp.roll(image, shift=1, axis=1)  # Shift right
-    shifted = shifted.at[:, 0].set(border_value)  # Fill left border
-    return shifted
+# @jit
+# def shift_right(image, border_value=0):
+#     shifted = jnp.roll(image, shift=1, axis=1)  # Shift right
+#     shifted = shifted.at[:, 0].set(border_value)  # Fill left border
+#     return shifted
 
-@jit
-def shift_down(image, border_value=0):
-    shifted = jnp.roll(image, shift=1, axis=0)  # Shift down
-    shifted = shifted.at[0, :].set(border_value)  # Fill top border
-    return shifted
-
-
+# @jit
+# def shift_down(image, border_value=0):
+#     shifted = jnp.roll(image, shift=1, axis=0)  # Shift down
+#     shifted = shifted.at[0, :].set(border_value)  # Fill top border
+#     return shifted
 
 
 
 
+
+
+
+# @jit
+# def my_connected_comp_check(img):
+#     foreground = img > 0
+#     max_idx  = reduce(mul, img.shape) + 1
+#     indices = jnp.arange(1, max_idx).reshape(img.shape)
+#     largest_value = max_idx
+
+#     indices = jnp.arange(1, max_idx).reshape(img.shape)
+#     indices = indices * foreground + largest_value * (1 - foreground)
+
+
+#     for iter in range(500):
+#         # Define neighbor offsets for 4-connectivity
+#         all_neighbors = jnp.stack([indices,
+#                                     shift_left(indices, border_value=largest_value),
+#                                     shift_up(indices, border_value=largest_value),
+#                                     shift_right(indices, border_value=largest_value),
+#                                     shift_down(indices, border_value=largest_value)],
+#                                     axis=-1)
+
+#         indices = jnp.min(all_neighbors, axis=-1)
+#         indices = indices * foreground + largest_value * (1 - foreground)
+
+
+
+
+#     indices = indices * foreground
+
+#     return indices
 
 @jit
 def my_connected_comp_check(img):
+
     foreground = img > 0
     max_idx  = reduce(mul, img.shape) + 1
-    indices = jnp.arange(1, max_idx).reshape(img.shape)
-    largest_value = max_idx
 
     indices = jnp.arange(1, max_idx).reshape(img.shape)
-    indices = indices * foreground + largest_value * (1 - foreground)
-
-    def my_connected_comp(indices):
-        for iter in range(500):
-            # Define neighbor offsets for 4-connectivity
-            all_neighbors = jnp.stack([indices,
-                                        shift_left(indices, border_value=largest_value),
-                                        shift_up(indices, border_value=largest_value),
-                                        shift_right(indices, border_value=largest_value),
-                                        shift_down(indices, border_value=largest_value)],
-                                        axis=-1)
-
-            indices = jnp.min(all_neighbors, axis=-1)
-            indices = indices * foreground + largest_value * (1 - foreground)
-
-        return indices
-
-
-    for it in range(10):
-        indices = my_connected_comp(indices)
-
     indices = indices * foreground
 
-    # # Initialize loop variables
-    # indices_previdous_current = jnp.stack([jnp.zeros_like(indices), indices], axis=-1)
-    # # Run the while loop
-    # result = jax.lax.while_loop(cond, 
-    #                             my_connected_comp,
-    #                             indices_previdous_current)
+    
 
-    # indices = result[:, :, 1] * foreground
+    for iter in range(1000):
+        # Use reduce_window to perform the dilation operation
+        indices = jax.lax.reduce_window(indices, init_value=0,
+                                        computation=lambda x, y: jnp.maximum(x, y),
+                                        window_dimensions=(3, 3),
+                                        window_strides=(1, 1), padding='SAME')
+
+        indices = indices * foreground
+
+
+
     return indices
 
 
-    
 
 
 print('skimage:')
@@ -118,3 +130,6 @@ print('my_connected_comp_check compilation:')
 print(timeit.timeit(lambda: my_connected_comp_check(img), number=1))
 print('my_connected_comp_check:')
 print(timeit.timeit(lambda: my_connected_comp_check(img), number=3))
+
+plt.imshow(my_connected_comp_check(img))
+plt.show()

@@ -8,6 +8,8 @@ from functools import partial
 def jax_grayscale_dilation(image, structuring_element_size):
     """
     Perform grayscale dilation on a 2D image using a vectorized approach.
+    For circular structuring element you can apply small window several times.
+    For cross you can do line and line....
     """
     # Define a scalar for the initial value that does not depend on the dynamic content of `image`
     # Since we're doing dilation, we can safely set this to the minimum possible value of the image type
@@ -41,19 +43,21 @@ if __name__ == '__main__':
     from skimage.morphology import dilation
     img = jnp.array(data.coins().astype(np.float32)/ 255) 
 
-    structuring_element = np.ones((10,10))
+    structuring_element = np.ones((21,21))
     structuring_element_size = structuring_element.shape[0]
 
     # Find local maxima
     dilated = jax_grayscale_dilation(img, structuring_element_size)
     dilated_skimage = dilation(np.array(img), np.array(structuring_element))
 
-    test =  dilated == dilated_skimage
+    test =  np.abs(np.array(dilated) - dilated_skimage)
 
     # Print result
     plt.imshow(img)
     plt.show()
     plt.imshow(dilated)
+    plt.show()
+    plt.imshow(dilated_skimage)
     plt.show()
     plt.imshow(test)
     plt.show()

@@ -47,7 +47,9 @@ if __name__ == '__main__':
     import numpy as np
     import timeit
     from skimage.feature import peak_local_max
-    img = jnp.array(data.coins().astype(np.float32)/ 255) 
+    
+    img = data.coins().astype(np.float32)/ 255
+    img = jnp.array(img)
 
     # Find local maxima
     local_maxima = find_local_maxima(img)
